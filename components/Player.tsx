@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Replayer } from 'rrweb'
+import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
+import { Play, Pause } from 'lucide-react'
 
 interface PlayerProps {
   events: any[]
@@ -89,6 +92,9 @@ export default function Player({ events, onReady }: PlayerProps) {
             replayerRef.current = replayer
             console.log('✅ Replayer created')
             
+            // Reset current time to 0 when replayer is created
+            setCurrentTime(0)
+            
             // Continue with setup - defer further to avoid blocking
             setTimeout(() => {
               const setupCleanup = setupReplayer(replayer)
@@ -132,6 +138,80 @@ export default function Player({ events, onReady }: PlayerProps) {
           setIsPlaying(false)
         })
 
+        // Center and scale the recording dynamically
+        const centerAndScaleRecording = () => {
+          try {
+            const wrapper = container.querySelector('.replayer-wrapper') as HTMLElement
+            if (!wrapper) {
+              console.log('⚠️ Wrapper not found yet, will retry...')
+              return
+            }
+
+            const containerRect = container.getBoundingClientRect()
+            const containerWidth = containerRect.width
+            const containerHeight = containerRect.height
+
+            // Get original viewport dimensions from events
+            const viewportEvent = events.find((e: any) => (e?.type === 4 || e?.type === '4') && e?.data?.width && e?.data?.height)
+            const originalWidth = viewportEvent?.data?.width || 390
+            const originalHeight = viewportEvent?.data?.height || 699
+
+            console.log('📐 Centering recording:', {
+              container: { width: containerWidth, height: containerHeight },
+              original: { width: originalWidth, height: originalHeight }
+            })
+
+            // Calculate scale to fit within container while maintaining aspect ratio
+            const scaleX = containerWidth / originalWidth
+            const scaleY = containerHeight / originalHeight
+            const scale = Math.min(scaleX, scaleY, 1) // Don't scale up, only down
+
+            // Calculate scaled dimensions
+            const scaledWidth = originalWidth * scale
+            const scaledHeight = originalHeight * scale
+
+            // Center the wrapper
+            wrapper.style.position = 'absolute'
+            wrapper.style.left = '50%'
+            wrapper.style.top = '50%'
+            wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`
+            wrapper.style.transformOrigin = 'center center'
+            wrapper.style.width = `${originalWidth}px`
+            wrapper.style.height = `${originalHeight}px`
+
+            console.log('✅ Recording centered and scaled:', {
+              scale,
+              scaledDimensions: { width: scaledWidth, height: scaledHeight },
+              wrapperDimensions: { width: originalWidth, height: originalHeight }
+            })
+          } catch (error) {
+            console.error('Error centering recording:', error)
+          }
+        }
+
+        // Center immediately and on resize
+        setTimeout(centerAndScaleRecording, 500)
+        setTimeout(centerAndScaleRecording, 1000)
+        setTimeout(centerAndScaleRecording, 2000)
+
+        // Watch for wrapper creation
+        const checkWrapper = setInterval(() => {
+          const wrapper = container.querySelector('.replayer-wrapper')
+          if (wrapper) {
+            centerAndScaleRecording()
+            clearInterval(checkWrapper)
+          }
+        }, 100)
+
+        // Cleanup interval after 10 seconds
+        setTimeout(() => clearInterval(checkWrapper), 10000)
+
+        // Handle window resize
+        const handleResize = () => {
+          centerAndScaleRecording()
+        }
+        window.addEventListener('resize', handleResize)
+
         // Calculate duration from events
         if (events.length > 0) {
           const firstEvent = events[0]
@@ -145,11 +225,20 @@ export default function Player({ events, onReady }: PlayerProps) {
         const timeInterval = setInterval(() => {
           if (replayerRef.current) {
             try {
-              const current = replayerRef.current.getCurrentTime?.() || 0
-              setCurrentTime(current)
+              const current = replayerRef.current.getCurrentTime?.()
+              // Only update if we have a valid number and it's >= 0
+              if (typeof current === 'number' && current >= 0 && !isNaN(current)) {
+                setCurrentTime(current)
+              } else {
+                setCurrentTime(0)
+              }
             } catch (e) {
-              // Ignore errors
+              // Ignore errors, keep at 0
+              setCurrentTime(0)
             }
+          } else {
+            // Replayer not ready yet, keep at 0
+            setCurrentTime(0)
           }
         }, 500) // Very long interval to reduce CPU usage
 
@@ -437,6 +526,7 @@ export default function Player({ events, onReady }: PlayerProps) {
           if (timeInterval) {
             clearInterval(timeInterval)
           }
+          window.removeEventListener('resize', handleResize)
           if (replayerRef.current) {
             replayerRef.current.pause()
           }
@@ -452,6 +542,18 @@ export default function Player({ events, onReady }: PlayerProps) {
       cleanupFunctions.forEach(fn => fn())
     }
   }, [events])
+
+  // Format time helper function
+  const formatTime = (ms: number): string => {
+    // Ensure we have a valid number
+    if (!ms || isNaN(ms) || ms < 0) {
+      return '0:00'
+    }
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
 
   const handlePlayPause = () => {
     if (!replayerRef.current) {
@@ -499,54 +601,70 @@ export default function Player({ events, onReady }: PlayerProps) {
     <div className="flex flex-col h-full">
       <div 
         ref={containerRef} 
-        className="flex-1 bg-white border border-gray-300 rounded overflow-hidden relative player-container"
+        className="flex-1 overflow-hidden relative player-container"
         style={{ minHeight: '600px' }}
       />
       
-      {/* Playbar */}
-      <div className="bg-gray-900 text-white p-4 rounded-b">
-        <div className="flex items-center gap-4">
+      {/* Playbar - Styled with ShadCN components */}
+      <div className="rounded-b" style={{ backgroundColor: '#0c0a09', marginTop: '12px', paddingLeft: '16px', paddingRight: '16px', paddingTop: '16px', paddingBottom: '16px' }}>
+        <div className="flex items-center" style={{ fontFamily: 'var(--font-inter)', fontWeight: 400, color: '#fafaf9', gap: '16px' }}>
           {/* Play/Pause Button */}
-          <button
+          <Button
             onClick={handlePlayPause}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+            size="icon"
+            variant="default"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            style={{ borderWidth: '1px' }}
           >
-            {isPlaying ? '⏸ Pause' : '▶ Play'}
-          </button>
+            {isPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+          </Button>
 
           {/* Speed Control */}
-          <div className="flex items-center gap-2">
-            <span>Speed:</span>
-            {[0.5, 1, 2, 4].map((speed) => (
-              <button
+          <div className="flex items-center" style={{ gap: '8px' }}>
+            <span className="text-sm" style={{ color: '#fafaf9', fontFamily: 'var(--font-inter)', fontWeight: 400 }}>Speed:</span>
+            {[0.5, 1, 2].map((speed) => (
+              <Button
                 key={speed}
                 onClick={() => handleSpeedChange(speed)}
-                className={`px-3 py-1 rounded transition-colors ${
-                  playbackSpeed === speed
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
+                variant={playbackSpeed === speed ? 'default' : 'outline'}
+                size="sm"
+                style={{ 
+                  fontFamily: 'var(--font-inter)', 
+                  fontWeight: 400, 
+                  color: playbackSpeed === speed ? '#fafaf9' : '#0c0a09',
+                  borderWidth: '1px'
+                }}
               >
                 {speed}x
-              </button>
+              </Button>
             ))}
           </div>
 
-          {/* Timeline */}
-          <div className="flex-1 flex items-center gap-2">
-            <span className="text-sm text-gray-400">
-              {Math.floor(currentTime / 1000)}s
+          {/* Timeline - ShadCN Slider with time display */}
+          <div className="flex-1 flex items-center gap-3">
+            {/* Start time */}
+            <span className="text-sm min-w-[4rem] text-right font-mono tabular-nums" style={{ color: '#fafaf9', fontFamily: 'var(--font-inter)', fontWeight: 400 }}>
+              {formatTime(currentTime)}
             </span>
-            <input
-              type="range"
-              min="0"
-              max={duration || 100}
-              value={currentTime / 1000}
-              onChange={(e) => handleSeek(parseInt(e.target.value) * 1000)}
+            
+            {/* Progress slider */}
+            <Slider
+              value={duration > 0 ? [currentTime / 1000] : [0]}
+              min={0}
+              max={duration > 0 ? duration / 1000 : 100}
+              step={0.1}
+              onValueChange={(value) => handleSeek(value[0] * 1000)}
               className="flex-1"
+              disabled={duration === 0}
             />
-            <span className="text-sm text-gray-400">
-              {Math.floor((duration || 0) / 1000)}s
+            
+            {/* End time */}
+            <span className="text-sm min-w-[4rem] font-mono tabular-nums" style={{ color: '#fafaf9', fontFamily: 'var(--font-inter)', fontWeight: 400 }}>
+              {formatTime(duration || 0)}
             </span>
           </div>
         </div>

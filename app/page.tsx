@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { fetchSessionData } from '@/lib/api'
 import Player from '@/components/Player'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Home() {
   const [events, setEvents] = useState<any[]>([])
@@ -29,46 +31,83 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          Converlytik Session Replay Player
-        </h1>
+    <main className="min-h-screen" style={{ backgroundColor: '#0c0a09', padding: '36px' }}>
+      <div className="max-w-7xl mx-auto" style={{ backgroundColor: '#0c0a09' }}>
+        <div className="mb-6" style={{ border: 'none' }}>
+          <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-inter)', fontWeight: 700, color: '#fafaf9' }}>
+            Converlytik Session Replay Player
+          </h1>
+        </div>
 
         {loading && (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading session recording...</p>
+          <div className="text-card-foreground rounded-lg shadow-lg p-6" style={{ backgroundColor: '#0c0a09', border: 'none' }}>
+            {/* Status Badge */}
+            <div style={{ marginBottom: '12px' }}>
+              <Badge 
+                variant="secondary" 
+                style={{
+                  borderRadius: '8px',
+                  padding: '8px',
+                  backgroundColor: '#fbbf24',
+                  color: '#fafaf9',
+                  fontFamily: 'var(--font-inter)',
+                  fontWeight: 400,
+                  fontSize: '0.75rem'
+                }}
+              >
+                Loading session recording...
+              </Badge>
             </div>
+            
+            {/* Skeleton loader */}
+            <Skeleton className="w-full h-[80vh] min-h-[600px] rounded-lg" style={{ backgroundColor: '#1c1917' }} />
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-800 font-semibold">Error</p>
-            <p className="text-red-600">{error}</p>
+          <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: '#0c0a09', border: 'none' }}>
+            <p className="text-destructive font-semibold">Error</p>
+            <p className="text-destructive/80">{error}</p>
           </div>
         )}
 
         {!loading && !error && events.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="mb-4 text-sm">
-              {playerReady ? (
-                <span className="text-green-600 font-semibold">✅ Recording loaded successfully</span>
-              ) : (
-                <span className="text-gray-600">Loading {events.length} events...</span>
-              )}
+          <div className="text-card-foreground rounded-lg shadow-lg p-6" style={{ backgroundColor: '#0c0a09', border: 'none' }}>
+            {/* Status Badge */}
+            <div style={{ marginBottom: '12px' }}>
+              <Badge 
+                variant={playerReady ? "default" : "secondary"} 
+                style={{
+                  borderRadius: '8px',
+                  padding: '8px',
+                  backgroundColor: playerReady ? '#22c55e' : '#fbbf24',
+                  color: '#fafaf9',
+                  fontFamily: 'var(--font-inter)',
+                  fontWeight: 400,
+                  fontSize: '0.75rem'
+                }}
+              >
+                {playerReady ? (
+                  <span>Recording loaded successfully</span>
+                ) : (
+                  <span>Loading {events.length} events...</span>
+                )}
+              </Badge>
             </div>
-            <div className="h-[80vh] min-h-[600px]">
+            
+            {/* Player with Skeleton overlay */}
+            <div className="h-[80vh] min-h-[600px] relative">
               <Player events={events} onReady={() => setPlayerReady(true)} />
+              {!playerReady && (
+                <Skeleton className="w-full h-full rounded-lg absolute inset-0" style={{ backgroundColor: '#1c1917' }} />
+              )}
             </div>
           </div>
         )}
 
         {!loading && !error && events.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-yellow-800">No events found</p>
+          <div className="rounded-lg p-4" style={{ backgroundColor: '#0c0a09', border: 'none' }}>
+            <p className="text-yellow-800 dark:text-yellow-200">No events found</p>
           </div>
         )}
       </div>

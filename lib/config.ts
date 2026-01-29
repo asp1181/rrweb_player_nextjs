@@ -9,10 +9,8 @@
  */
 
 export const config = {
-    apiKey: 'phx_OIFvwDLblvpGG2bv9pVPCOWI8PSchRcceaSObcyFMOaTMB9',
+    apiKey: 'phx_mQR707BVEmHmmH8TXS2vwuGlB6oYw0KQrFco9rBlMfPQ3p1',
     projectId: '197154',
     sessionId: '019c00f8-e2a7-77df-b744-3bde2a601ce9',
     apiHost: 'https://us.posthog.com', // Change if using a different PostHog instance
 }
-
-

@@ -21,6 +21,12 @@ interface SourcesResponse {
 async function fetchSources(): Promise<SourcesResponse> {
     const url = `${config.apiHost}/api/projects/${config.projectId}/session_recordings/${config.sessionId}/snapshots?blob_v2=true`
 
+    // Debug: Log API key (first 10 and last 5 chars only for security)
+    console.log('🔑 [fetchSources] API Key being used:', config.apiKey.substring(0, 10) + '...' + config.apiKey.substring(config.apiKey.length - 5))
+    console.log('🔑 [fetchSources] Full API Key length:', config.apiKey.length)
+    console.log('🔑 [fetchSources] Full API Key (for debugging):', config.apiKey)
+    console.log('🔑 [fetchSources] API URL:', url)
+
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${config.apiKey}`
@@ -161,6 +167,9 @@ function processMutationEvent(event: any): any {
  */
 export async function fetchSessionData(): Promise<any[]> {
     console.log('🚀 Fetching session data...')
+    console.log('🔑 API Key from config:', config.apiKey.substring(0, 10) + '...' + config.apiKey.substring(config.apiKey.length - 5))
+    console.log('🔑 API Key length:', config.apiKey.length)
+    console.log('🔑 Full API Key (for debugging):', config.apiKey)
     
     const sourcesResponse = await fetchSources()
     
