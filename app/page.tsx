@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchSessionData } from '@/lib/api'
 import Player from '@/components/Player'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,7 +16,13 @@ export default function Home() {
       try {
         setLoading(true)
         setError(null)
-        const data = await fetchSessionData()
+        // Fetch from API route (server-side) instead of directly calling fetchSessionData
+        const response = await fetch('/api/session')
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to load session')
+        }
+        const { events: data } = await response.json()
         setEvents(data)
       } catch (err) {
         console.error('Error loading session:', err)
