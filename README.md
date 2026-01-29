@@ -246,20 +246,35 @@ const replayer = new Replayer(processedEvents, {
 npm install
 ```
 
-2. Configure PostHog credentials in `lib/config.ts`:
-```typescript
-export const config = {
-  apiKey: 'your-posthog-api-key',
-  projectId: 'your-project-id',
-  sessionId: 'session-recording-id',
-  apiHost: 'https://us.posthog.com',
-}
+2. Create environment file:
+```bash
+cp .env.example .env.local
 ```
 
-3. Run development server:
+3. Configure PostHog credentials in `.env.local`:
+```bash
+POSTHOG_API_KEY=phx_your_posthog_api_key_here
+POSTHOG_PROJECT_ID=your_project_id_here
+POSTHOG_SESSION_ID=your_session_recording_id_here
+POSTHOG_API_HOST=https://us.posthog.com
+```
+
+**Important**: Never commit `.env.local` to git. It's already in `.gitignore`. The `.env.example` file serves as a template.
+
+4. Run development server:
 ```bash
 npm run dev
 ```
+
+### Getting Your PostHog API Key
+
+1. Go to [PostHog Personal API Keys](https://us.posthog.com/personal-api-keys)
+2. Click "Create Personal API Key"
+3. Give it a name (e.g., "Session Recording Player")
+4. Copy the key (starts with `phx_`)
+5. Paste it into your `.env.local` file
+
+**Security Note**: If your API key is ever exposed in git, PostHog will automatically deactivate it. Always use environment variables, never hardcode secrets in your code.
 
 ## File Structure
 
