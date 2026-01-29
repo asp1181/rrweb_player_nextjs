@@ -21,10 +21,6 @@ export default function Player({ events, onReady }: PlayerProps) {
 
   useEffect(() => {
     if (!containerRef.current || !events || events.length === 0) {
-      console.log('⚠️ Player: Missing container or events', {
-        hasContainer: !!containerRef.current,
-        eventsCount: events?.length || 0
-      })
       return
     }
 
@@ -44,14 +40,7 @@ export default function Player({ events, onReady }: PlayerProps) {
     }, 500) // Increased delay to let page fully render first
 
     function initializePlayer() {
-      // Check container dimensions
       const containerRect = container.getBoundingClientRect()
-      console.log('Container dimensions:', { width: containerRect.width, height: containerRect.height })
-
-      console.log('🚀 Initializing player...', {
-        eventsCount: events.length,
-        containerSize: { width: containerRect.width, height: containerRect.height }
-      })
 
       try {
         // Find viewport event for original device dimensions
@@ -63,19 +52,13 @@ export default function Player({ events, onReady }: PlayerProps) {
       const fullSnapshotEvent = events.find((e: any) => e?.type === 2 || e?.type === '2')
       
       if (!fullSnapshotEvent) {
-        console.error('❌ No FullSnapshot found')
+        console.error('No FullSnapshot found in events')
         return
       }
-      
-      console.log('✅ FullSnapshot found')
 
       // Skip heavy processing - let rrweb handle it natively
       // Use events directly - rrweb handles sorting internally
       const processedEvents = events
-      console.log('✅ Using events directly (minimal processing)')
-
-      // Create replayer - defer significantly to avoid blocking main thread
-      console.log('🔧 Creating Replayer with', processedEvents.length, 'events')
       
       // Use requestAnimationFrame + setTimeout to defer heavy work
       requestAnimationFrame(() => {
@@ -90,7 +73,6 @@ export default function Player({ events, onReady }: PlayerProps) {
             })
 
             replayerRef.current = replayer
-            console.log('✅ Replayer created')
             
             // Reset current time to 0 when replayer is created
             setCurrentTime(0)
@@ -106,7 +88,6 @@ export default function Player({ events, onReady }: PlayerProps) {
               // Use a longer delay to ensure iframe is ready
               setTimeout(() => {
                 if (onReady) {
-                  console.log('✅ Player ready - calling onReady')
                   onReady()
                 }
               }, 800)
@@ -116,7 +97,6 @@ export default function Player({ events, onReady }: PlayerProps) {
             // Still call onReady even if there's an error
             if (onReady) {
               setTimeout(() => {
-                console.log('⚠️ Player created with errors - calling onReady anyway')
                 onReady()
               }, 1000)
             }
@@ -143,7 +123,6 @@ export default function Player({ events, onReady }: PlayerProps) {
           try {
             const wrapper = container.querySelector('.replayer-wrapper') as HTMLElement
             if (!wrapper) {
-              console.log('⚠️ Wrapper not found yet, will retry...')
               return
             }
 
@@ -156,19 +135,10 @@ export default function Player({ events, onReady }: PlayerProps) {
             const originalWidth = viewportEvent?.data?.width || 390
             const originalHeight = viewportEvent?.data?.height || 699
 
-            console.log('📐 Centering recording:', {
-              container: { width: containerWidth, height: containerHeight },
-              original: { width: originalWidth, height: originalHeight }
-            })
-
             // Calculate scale to fit within container while maintaining aspect ratio
             const scaleX = containerWidth / originalWidth
             const scaleY = containerHeight / originalHeight
             const scale = Math.min(scaleX, scaleY, 1) // Don't scale up, only down
-
-            // Calculate scaled dimensions
-            const scaledWidth = originalWidth * scale
-            const scaledHeight = originalHeight * scale
 
             // Center the wrapper
             wrapper.style.position = 'absolute'
@@ -178,12 +148,6 @@ export default function Player({ events, onReady }: PlayerProps) {
             wrapper.style.transformOrigin = 'center center'
             wrapper.style.width = `${originalWidth}px`
             wrapper.style.height = `${originalHeight}px`
-
-            console.log('✅ Recording centered and scaled:', {
-              scale,
-              scaledDimensions: { width: scaledWidth, height: scaledHeight },
-              wrapperDimensions: { width: originalWidth, height: originalHeight }
-            })
           } catch (error) {
             console.error('Error centering recording:', error)
           }
@@ -271,10 +235,9 @@ export default function Player({ events, onReady }: PlayerProps) {
                 el.style.setProperty('opacity', '1', 'important')
                 el.style.setProperty('display', 'block', 'important')
               })
-              console.log(`✅ Styled ${iframeIndicators.length} touch/mouse indicators in iframe`)
             }
           } catch (e) {
-            console.warn('Error styling touch indicators:', e)
+            // Silently fail for cross-origin or sandboxed iframes
           }
         }
 
@@ -309,7 +272,6 @@ export default function Player({ events, onReady }: PlayerProps) {
                 }
               `
               iframeDoc.head.appendChild(style)
-              console.log('✅ Injected touch indicator styles into iframe')
             }
             
             // Also style existing indicators
@@ -358,7 +320,6 @@ export default function Player({ events, onReady }: PlayerProps) {
                   childList: true,
                   subtree: true
                 })
-                console.log('✅ Watching iframe for touch indicators')
                 
                 // Store observer for cleanup
                 return () => {
@@ -366,8 +327,7 @@ export default function Player({ events, onReady }: PlayerProps) {
                 }
               }
             } catch (e) {
-              // Can't observe iframe - might be sandboxed
-              console.warn('Cannot watch iframe (may be sandboxed):', e)
+              // Can't observe iframe - might be sandboxed, silently fail
             }
           }
         }
@@ -432,57 +392,8 @@ export default function Player({ events, onReady }: PlayerProps) {
                     el.style.setProperty('width', '24px', 'important') // Size - customize as needed
                     el.style.setProperty('height', '24px', 'important')
                     el.style.setProperty('box-shadow', '0 0 8px rgba(59, 130, 246, 0.6)', 'important') // Glow effect
-                    console.log('🎨 Applied custom blue circle styling to touch indicator')
                   }
-                  
-                  console.log(`🎯 Indicator FULL debug:`, {
-                    inlineStyles: {
-                      position: el.style.position,
-                      zIndex: el.style.zIndex,
-                      visibility: el.style.visibility,
-                      opacity: el.style.opacity,
-                      display: el.style.display,
-                      left: el.style.left,
-                      top: el.style.top,
-                      width: el.style.width,
-                      height: el.style.height,
-                      backgroundImage: el.style.backgroundImage?.substring(0, 50),
-                    },
-                    computedStyles: {
-                      display: computed.display,
-                      visibility: computed.visibility,
-                      opacity: computed.opacity,
-                      zIndex: computed.zIndex,
-                      position: computed.position,
-                      left: computed.left,
-                      top: computed.top,
-                      width: computed.width,
-                      height: computed.height,
-                      backgroundImage: computed.backgroundImage?.substring(0, 50) || 'none',
-                      backgroundSize: computed.backgroundSize,
-                    },
-                    elementMetrics: {
-                      offsetLeft: el.offsetLeft,
-                      offsetTop: el.offsetTop,
-                      offsetWidth: el.offsetWidth,
-                      offsetHeight: el.offsetHeight,
-                      clientWidth: el.clientWidth,
-                      clientHeight: el.clientHeight,
-                      scrollWidth: el.scrollWidth,
-                      scrollHeight: el.scrollHeight,
-                    },
-                    parentInfo: {
-                      tag: el.parentElement?.tagName,
-                      className: el.parentElement?.className,
-                      overflow: el.parentElement ? window.getComputedStyle(el.parentElement).overflow : 'N/A',
-                      position: el.parentElement ? window.getComputedStyle(el.parentElement).position : 'N/A',
-                      zIndex: el.parentElement ? window.getComputedStyle(el.parentElement).zIndex : 'N/A',
-                    }
-                  })
                 })
-                console.log(`✅ Styled ${wrapperIndicators.length} touch/mouse indicators in wrapper`)
-              } else {
-                console.log('⚠️ No touch/mouse indicators found in wrapper')
               }
               
               // Style swipe/trail lines (red lines for mobile swipes)
@@ -495,15 +406,10 @@ export default function Player({ events, onReady }: PlayerProps) {
                   el.style.setProperty('visibility', 'visible', 'important')
                   el.style.setProperty('opacity', '1', 'important')
                 })
-                console.log(`✅ Styled ${swipeLines.length} swipe/trail lines in wrapper`)
-              } else {
-                console.log('⚠️ No swipe/trail lines found in wrapper')
               }
-            } else {
-              console.log('⚠️ Wrapper not found')
             }
           } catch (e) {
-            console.warn('Error checking wrapper indicators:', e)
+            // Silently fail - indicators are optional
           }
         }
         
@@ -557,16 +463,13 @@ export default function Player({ events, onReady }: PlayerProps) {
 
   const handlePlayPause = () => {
     if (!replayerRef.current) {
-      console.warn('⚠️ Replayer not ready yet')
       return
     }
 
     try {
       if (isPlaying) {
-        console.log('⏸ Pausing...')
         replayerRef.current.pause()
       } else {
-        console.log('▶ Playing...')
         replayerRef.current.play()
       }
     } catch (error) {

@@ -21,12 +21,6 @@ interface SourcesResponse {
 async function fetchSources(): Promise<SourcesResponse> {
     const url = `${config.apiHost}/api/projects/${config.projectId}/session_recordings/${config.sessionId}/snapshots?blob_v2=true`
 
-    // Debug: Log API key (first 10 and last 5 chars only for security)
-    console.log('🔑 [fetchSources] API Key being used:', config.apiKey.substring(0, 10) + '...' + config.apiKey.substring(config.apiKey.length - 5))
-    console.log('🔑 [fetchSources] Full API Key length:', config.apiKey.length)
-    console.log('🔑 [fetchSources] Full API Key (for debugging):', config.apiKey)
-    console.log('🔑 [fetchSources] API URL:', url)
-
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${config.apiKey}`
@@ -166,18 +160,11 @@ function processMutationEvent(event: any): any {
  * Fetches all session recording data and processes it for rrweb
  */
 export async function fetchSessionData(): Promise<any[]> {
-    console.log('🚀 Fetching session data...')
-    console.log('🔑 API Key from config:', config.apiKey.substring(0, 10) + '...' + config.apiKey.substring(config.apiKey.length - 5))
-    console.log('🔑 API Key length:', config.apiKey.length)
-    console.log('🔑 Full API Key (for debugging):', config.apiKey)
-    
     const sourcesResponse = await fetchSources()
     
     if (!sourcesResponse.sources || sourcesResponse.sources.length === 0) {
         throw new Error('No sources found for this session recording')
     }
-
-    console.log(`Found ${sourcesResponse.sources.length} source(s)`)
 
     const snapshotData: any[] = []
 
@@ -199,8 +186,6 @@ export async function fetchSessionData(): Promise<any[]> {
             snapshotData.push(data)
         }
     }
-
-    console.log(`Total events fetched: ${snapshotData.length}`)
     
     // CRITICAL: Events come as tuples [sessionId, eventObject]
     // Extract the actual event objects from index [1] - optimized batch processing
@@ -219,46 +204,23 @@ export async function fetchSessionData(): Promise<any[]> {
             // Already an event object
             extractedEvents.push(item)
         }
-        
-        // Log progress for large datasets
-        if (i > 0 && i % 100 === 0) {
-            console.log(`Extracted ${extractedEvents.length} events from ${i + 1} items...`)
-        }
     }
     
-    console.log(`✅ Extracted ${extractedEvents.length} event objects from ${snapshotData.length} items`)
+    // Check for FullSnapshot - log error if missing
+    const fullSnapshot = extractedEvents.find((e: any) => {
+        if (!e) return false
+        const type = e.type
+        return type === 2 || type === '2' || type === 2.0 || String(type) === '2'
+    })
     
-    // Debug: Check event structure
-    if (extractedEvents.length > 0) {
-        const firstEvent = extractedEvents[0]
-        console.log('=== DEBUG: First event structure ===')
-        console.log('First event type:', firstEvent?.type)
-        console.log('First event hasData:', !!firstEvent?.data)
-        
-        // Check for FullSnapshot
-        const fullSnapshot = extractedEvents.find((e: any) => {
-            if (!e) return false
-            const type = e.type
-            return type === 2 || type === '2' || type === 2.0 || String(type) === '2'
-        })
-        
-        if (fullSnapshot) {
-            console.log('✅✅✅ Found FullSnapshot in extracted events')
-            console.log('FullSnapshot data type:', typeof fullSnapshot.data)
-            if (typeof fullSnapshot.data === 'string') {
-                console.log('⚠️ FullSnapshot data is a string - might need decompression')
-            }
-        } else {
-            console.error('❌❌❌ No FullSnapshot found in extracted events')
-            const allTypes = extractedEvents.map((e: any) => e?.type).filter(t => t !== undefined)
-            console.error('All event types found:', [...new Set(allTypes)])
-        }
+    if (!fullSnapshot) {
+        const allTypes = extractedEvents.map((e: any) => e?.type).filter(t => t !== undefined)
+        console.error('No FullSnapshot found in extracted events. Event types found:', [...new Set(allTypes)])
     }
 
     // Process events: remove PostHog-specific properties and decompress mutations
-    // Use for loop instead of map for better performance and progress tracking
+    // Use for loop instead of map for better performance
     const processedEvents: any[] = []
-    const startTime = Date.now()
     
     for (let i = 0; i < extractedEvents.length; i++) {
         const event = extractedEvents[i]
@@ -282,7 +244,6 @@ export async function fetchSessionData(): Promise<any[]> {
         // Process FullSnapshot (type 2) - decompress if data is compressed
         if ((cleaned.type === 2 || cleaned.type === '2') && cleaned.data) {
             if (typeof cleaned.data === 'string' && isCompressed(cleaned.data)) {
-                console.log('🔧 Decompressing FullSnapshot data...')
                 try {
                     // FullSnapshot data decompression - returns an object, not array
                     const compressedArray = new Uint8Array(cleaned.data.length)
@@ -293,36 +254,20 @@ export async function fetchSessionData(): Promise<any[]> {
                     const parsed = JSON.parse(decompressed)
                     if (parsed && typeof parsed === 'object') {
                         cleaned.data = parsed
-                        console.log('✅ FullSnapshot data decompressed')
                     }
                 } catch (e) {
-                    console.error('❌ Failed to decompress FullSnapshot:', e)
+                    console.error('Failed to decompress FullSnapshot:', e)
                 }
             }
         }
 
         processedEvents.push(cleaned)
-        
-        // Log progress for large datasets
-        if (i > 0 && i % 100 === 0) {
-            const elapsed = Date.now() - startTime
-            console.log(`Processed ${i + 1}/${extractedEvents.length} events (${elapsed}ms)...`)
-        }
     }
     
-    const totalTime = Date.now() - startTime
-    console.log(`✅ Processed ${processedEvents.length} events in ${totalTime}ms`)
-
-    console.log(`✅ Processed ${processedEvents.length} events`)
-    
-    // Final check for FullSnapshot
+    // Final check for FullSnapshot - log error if missing
     const finalFullSnapshot = processedEvents.find((e: any) => e?.type === 2 || e?.type === '2')
-    if (finalFullSnapshot) {
-        console.log('✅ FullSnapshot found in processed events')
-        console.log('FullSnapshot data keys:', Object.keys(finalFullSnapshot.data || {}))
-    } else {
-        console.error('❌ No FullSnapshot in processed events!')
-        console.log('Processed event types:', [...new Set(processedEvents.map((e: any) => e?.type))])
+    if (!finalFullSnapshot) {
+        console.error('No FullSnapshot in processed events. Event types:', [...new Set(processedEvents.map((e: any) => e?.type))])
     }
     
     return processedEvents
