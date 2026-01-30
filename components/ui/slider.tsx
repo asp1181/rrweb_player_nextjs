@@ -43,8 +43,8 @@ function Slider({
         )}
         style={{ 
           backgroundColor: '#fafaf9',
-          height: '2px',
-          minHeight: '2px'
+          height: '6px',
+          minHeight: '6px'
         }}
       >
         <SliderPrimitive.Range
